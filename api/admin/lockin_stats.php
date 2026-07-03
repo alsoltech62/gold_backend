@@ -8,7 +8,8 @@ authenticateAdmin();
 $db = new Database();
 $conn = $db->getConnection();
 
-$totalLockedGold = $conn->query("SELECT COALESCE(SUM(gold_grams),0) FROM user_lock_ins WHERE status='active'")->fetchColumn();
+$totalLockedGold = $conn->query("SELECT COALESCE(SUM(gold_grams),0) FROM user_lock_ins WHERE status='active' AND metal_type='gold'")->fetchColumn();
+$totalLockedSilver = $conn->query("SELECT COALESCE(SUM(silver_grams),0) FROM user_lock_ins WHERE status='active' AND metal_type='silver'")->fetchColumn();
 $activePlans = $conn->query("SELECT COUNT(*) FROM user_lock_ins WHERE status='active'")->fetchColumn();
 $pendingReturns = $conn->query("
     SELECT COALESCE(SUM(l.gold_grams * (p.return_percentage / 100)),0) 
@@ -33,6 +34,7 @@ $plans = $conn->query("SELECT * FROM lock_in_plans WHERE status='active' ORDER B
 
 echo json_encode(['success' => true, 'data' => [
     'total_locked_gold' => round((float)$totalLockedGold, 4),
+    'total_locked_silver' => round((float)$totalLockedSilver, 4),
     'active_plans' => (int)$activePlans,
     'pending_returns' => round((float)$pendingReturns, 4),
     'early_unlocks' => (int)$earlyUnlocks,

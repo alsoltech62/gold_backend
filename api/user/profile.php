@@ -7,12 +7,12 @@ $user = authenticate();
 $db   = (new Database())->getConnection();
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $stmt = $db->prepare("SELECT id,name,mobile,email,address,city,state,pincode,aadhar_number,pan_number,created_at FROM users WHERE id=?");
+    $stmt = $db->prepare("SELECT id,name,mobile,email,address,city,state,pincode,aadhar_number,pan_number,dob,profile_photo,bank_name,account_number,ifsc_code,account_holder_name,created_at FROM users WHERE id=?");
     $stmt->execute([$user['id']]);
     echo json_encode(['success' => true, 'data' => $stmt->fetch()]);
 } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $data = json_decode(file_get_contents('php://input'), true);
-    $fields = ['name','email','address','city','state','pincode','aadhar_number','pan_number'];
+    $fields = ['name','email','address','city','state','pincode','aadhar_number','pan_number','dob','bank_name','account_number','ifsc_code','account_holder_name'];
     $updates = [];
     $values  = [];
     foreach ($fields as $f) {

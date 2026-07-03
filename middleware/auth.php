@@ -24,7 +24,7 @@ function verifyJWT($token) {
 function authenticate() {
     $headers = getallheaders();
     $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
-    if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+    if (!$authHeader || strpos($authHeader, 'Bearer ') !== 0) {
         http_response_code(401);
         echo json_encode(['success' => false, 'message' => 'Unauthorized']);
         exit();

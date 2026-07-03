@@ -16,6 +16,21 @@ if ($amount_inr < 100) {
     exit();
 }
 
+if ($payment_method === 'UPI') {
+    $razorpay_order_id = $data['razorpay_order_id'] ?? null;
+    $razorpay_signature = $data['razorpay_signature'] ?? null;
+
+    if ($razorpay_order_id && $razorpay_signature) {
+        require_once __DIR__ . '/../../config/razorpay.php';
+        $generated_signature = hash_hmac('sha256', $razorpay_order_id . "|" . $payment_id, RAZORPAY_KEY_SECRET);
+
+        if ($generated_signature !== $razorpay_signature) {
+            echo json_encode(['success' => false, 'message' => 'Payment verification failed (Invalid Signature)']);
+            exit();
+        }
+    }
+}
+
 $db = (new Database())->getConnection();
 $rate = $db->query("SELECT rate_per_gram FROM gold_rates ORDER BY rate_date DESC LIMIT 1")->fetch();
 if (!$rate) { echo json_encode(['success' => false, 'message' => 'Gold rate not available']); exit(); }

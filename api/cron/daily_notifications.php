@@ -9,7 +9,16 @@ if (php_sapi_name() !== 'cli' && (!isset($_GET['key']) || $_GET['key'] !== 'secr
     exit('Forbidden');
 }
 
-$type = $_GET['type'] ?? 'morning';
+$type = 'morning';
+if (php_sapi_name() === 'cli') {
+    foreach ($argv as $arg) {
+        if (strpos($arg, 'type=') === 0) {
+            $type = explode('=', $arg)[1];
+        }
+    }
+} else {
+    $type = $_GET['type'] ?? 'morning';
+}
 
 $db = (new Database())->getConnection();
 

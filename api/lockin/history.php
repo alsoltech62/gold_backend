@@ -41,8 +41,11 @@ try {
         $h['progress_percentage'] = min(max($progress, 0), 100);
         $h['days_remaining'] = max(ceil(($end_time - $current_time) / (60 * 60 * 24)), 0);
         
-        // Calculate estimated extra gold return based on percentage
+        // Calculate estimated extra return based on percentage
         $h['estimated_extra_gold'] = ($h['gold_grams'] * $h['return_percentage']) / 100;
+        $h['estimated_extra_silver'] = ($h['silver_grams'] * $h['return_percentage']) / 100;
+        $h['grams'] = $h['metal_type'] === 'silver' ? $h['silver_grams'] : $h['gold_grams'];
+        $h['estimated_extra'] = $h['metal_type'] === 'silver' ? $h['estimated_extra_silver'] : $h['estimated_extra_gold'];
     }
 
     echo json_encode(['success' => true, 'data' => $history]);

@@ -8,7 +8,17 @@ authenticate();
 $db = (new Database())->getConnection();
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $stmt = $db->query("SELECT * FROM lock_in_plans WHERE status = 'active' ORDER BY months ASC");
+    $metal_type = isset($_GET['metal_type']) ? $_GET['metal_type'] : null;
+    $query = "SELECT * FROM lock_in_plans WHERE status = 'active'";
+    $params = [];
+    if ($metal_type) {
+        $query .= " AND metal_type = ?";
+        $params[] = $metal_type;
+    }
+    $query .= " ORDER BY months ASC";
+    
+    $stmt = $db->prepare($query);
+    $stmt->execute($params);
     $plans = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Map color values for frontend based on months if not stored in DB

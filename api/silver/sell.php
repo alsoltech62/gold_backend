@@ -20,13 +20,13 @@ $db = (new Database())->getConnection();
 $summary = $db->prepare("
     SELECT 
         COALESCE(SUM(CASE WHEN t.type = 'buy' AND t.status = 'completed' AND t.metal_type = 'silver' THEN t.gold_grams ELSE 0 END), 0) -
-        COALESCE(SUM(CASE WHEN t.type IN ('sell', 'delivery') AND t.status = 'completed' AND t.metal_type = 'silver' THEN t.gold_grams ELSE 0 END), 0) as total_silver_grams
+        COALESCE(SUM(CASE WHEN t.type IN ('sell', 'delivery') AND t.status = 'completed' AND t.metal_type = 'silver' THEN t.gold_grams ELSE 0 END), 0) as available_silver_grams
     FROM transactions t
     WHERE t.user_id = ?
 ");
 $summary->execute([$user['id']]);
 $silver_bal = $summary->fetch();
-$total_silver = (float)($silver_bal['total_silver_grams'] ?? 0);
+$total_silver = (float)($silver_bal['available_silver_grams'] ?? 0);
 
 if ($grams > $total_silver) {
     echo json_encode(['success' => false, 'message' => 'Insufficient silver balance']);

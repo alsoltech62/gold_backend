@@ -22,14 +22,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $max_invest = $data['max_investment'] ?? 999.0;
     $penalty = $data['penalty_percentage'] ?? 0.0;
     $status = $data['status'] ?? 'active';
+    $metal_type = $data['metal_type'] ?? 'gold';
 
     if ($plan_id) {
-        $stmt = $db->prepare("UPDATE lock_in_plans SET plan_name = ?, months = ?, return_percentage = ?, min_investment = ?, max_investment = ?, penalty_percentage = ?, status = ? WHERE id = ?");
-        $stmt->execute([$plan_name, $months, $return_percentage, $min_invest, $max_invest, $penalty, $status, $plan_id]);
+        $stmt = $db->prepare("UPDATE lock_in_plans SET plan_name = ?, months = ?, return_percentage = ?, min_investment = ?, max_investment = ?, penalty_percentage = ?, status = ?, metal_type = ? WHERE id = ?");
+        $stmt->execute([$plan_name, $months, $return_percentage, $min_invest, $max_invest, $penalty, $status, $metal_type, $plan_id]);
         echo json_encode(['success' => true, 'message' => 'Plan updated successfully']);
     } else {
-        $stmt = $db->prepare("INSERT INTO lock_in_plans (plan_name, months, return_percentage, min_investment, max_investment, penalty_percentage, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$plan_name, $months, $return_percentage, $min_invest, $max_invest, $penalty, $status]);
+        $stmt = $db->prepare("INSERT INTO lock_in_plans (plan_name, months, return_percentage, min_investment, max_investment, penalty_percentage, status, metal_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$plan_name, $months, $return_percentage, $min_invest, $max_invest, $penalty, $status, $metal_type]);
         echo json_encode(['success' => true, 'message' => 'Plan created successfully']);
     }
 } else {

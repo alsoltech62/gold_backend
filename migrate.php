@@ -20,6 +20,15 @@ $queries = [
     // Add columns to transactions table individually
     "ALTER TABLE transactions ADD COLUMN metal_type ENUM('gold', 'silver') DEFAULT 'gold'",
     "ALTER TABLE transactions ADD COLUMN transaction_source ENUM('direct', 'sip', 'referral', 'wallet') DEFAULT 'direct'",
+    
+    // Add metal_type and silver_grams to lockin tables
+    "ALTER TABLE lock_in_plans ADD COLUMN metal_type ENUM('gold', 'silver') DEFAULT 'gold'",
+    "ALTER TABLE user_lock_ins ADD COLUMN silver_grams DECIMAL(10,4) DEFAULT 0.0000",
+    "ALTER TABLE user_lock_ins ADD COLUMN metal_type ENUM('gold', 'silver') DEFAULT 'gold'",
+    "ALTER TABLE user_lock_ins MODIFY COLUMN gold_grams DECIMAL(10,4) DEFAULT 0.0000",
+
+    // Add metal_type to delivery requests
+    "ALTER TABLE delivery_requests ADD COLUMN metal_type ENUM('gold', 'silver') DEFAULT 'gold'",
 
     "CREATE TABLE IF NOT EXISTS support_tickets (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -45,6 +54,7 @@ $queries = [
         id INT AUTO_INCREMENT PRIMARY KEY,
         months INT NOT NULL,
         return_percentage DECIMAL(5,2) NOT NULL,
+        metal_type ENUM('gold', 'silver') DEFAULT 'gold',
         status ENUM('active', 'inactive') DEFAULT 'active',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )",
@@ -53,7 +63,9 @@ $queries = [
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         plan_id INT NOT NULL,
-        gold_grams DECIMAL(10,4) NOT NULL,
+        gold_grams DECIMAL(10,4) DEFAULT 0.0000,
+        silver_grams DECIMAL(10,4) DEFAULT 0.0000,
+        metal_type ENUM('gold', 'silver') DEFAULT 'gold',
         start_date DATETIME NOT NULL,
         end_date DATETIME NOT NULL,
         status ENUM('active', 'completed', 'early_unlock') DEFAULT 'active',

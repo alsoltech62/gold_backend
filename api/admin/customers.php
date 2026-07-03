@@ -24,14 +24,14 @@ if ($method === 'GET') {
     if (empty($data['mobile']) || empty($data['name'])) {
         echo json_encode(['success' => false, 'message' => 'Name and mobile required']); exit();
     }
-    $stmt = $db->prepare("INSERT INTO users (name, mobile, email, address, city, state, pincode, aadhar_number, pan_number) VALUES (?,?,?,?,?,?,?,?,?)");
-    $stmt->execute([$data['name'], $data['mobile'], $data['email'] ?? '', $data['address'] ?? '', $data['city'] ?? '', $data['state'] ?? '', $data['pincode'] ?? '', $data['aadhar_number'] ?? '', $data['pan_number'] ?? '']);
+    $stmt = $db->prepare("INSERT INTO users (name, mobile, email, address, city, state, pincode, aadhar_number, pan_number, dob) VALUES (?,?,?,?,?,?,?,?,?,?)");
+    $stmt->execute([$data['name'], $data['mobile'], $data['email'] ?? '', $data['address'] ?? '', $data['city'] ?? '', $data['state'] ?? '', $data['pincode'] ?? '', $data['aadhar_number'] ?? '', $data['pan_number'] ?? '', $data['dob'] ?? '']);
     echo json_encode(['success' => true, 'message' => 'Customer created', 'id' => $db->lastInsertId()]);
 
 } elseif ($method === 'PUT') {
     $id   = (int)($_GET['id'] ?? 0);
     $data = json_decode(file_get_contents('php://input'), true);
-    $fields = ['name','email','address','city','state','pincode','aadhar_number','pan_number','is_active'];
+    $fields = ['name','email','address','city','state','pincode','aadhar_number','pan_number','is_active','dob'];
     $updates = []; $values = [];
     foreach ($fields as $f) { if (isset($data[$f])) { $updates[] = "$f=?"; $values[] = $data[$f]; } }
     $values[] = $id;
