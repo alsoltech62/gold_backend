@@ -70,13 +70,32 @@ if (!empty($referral_code)) {
 try {
     $stmt = $db->prepare("
         INSERT INTO users (
-            name, mobile, email, address, city, state, pincode, aadhar_number, pan_number, referred_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            name, mobile, email, address, city, state, pincode, aadhar_number, pan_number, referred_by, japsan_wallet
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 50)
     ");
 
     $stmt->execute([
         $name, $mobile, $email, $address, $city, $state, $pincode, $aadhar, $pan, $referred_by
     ]);
+
+    // Sync 50 JC signup bonus with external Japsan Ecosystem
+    $jc_api_url = 'https://odofast.in/api/external/wallet_api.php'; 
+    $secret = 'JAPSAN_EXTERNAL_API_SECRET_2026';
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $jc_api_url);
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        'action' => 'add',
+        'mobile' => $mobile,
+        'amount' => 50,
+        'description' => 'Signup Bonus on Gold Platform',
+        'secret' => $secret
+    ]));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_exec($ch);
+    curl_close($ch);
 
     echo json_encode([
         'success' => true,

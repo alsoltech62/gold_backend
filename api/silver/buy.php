@@ -49,12 +49,31 @@ try {
         }
         $db->prepare("UPDATE users SET inr_wallet = inr_wallet - ? WHERE id = ?")->execute([$amount_inr, $user['id']]);
     } elseif ($payment_method === 'japsan_wallet') {
-        $uStmt = $db->prepare("SELECT japsan_wallet FROM users WHERE id = ?");
-        $uStmt->execute([$user['id']]);
-        $japsan_wallet = $uStmt->fetch()['japsan_wallet'];
-        if ($japsan_wallet < $amount_inr) {
-            echo json_encode(['success' => false, 'message' => 'Insufficient Japsan coin balance']); exit;
+        // We sync first before deducting
+        $jc_api_url = 'https://odofast.in/api/external/wallet_api.php'; 
+        $secret = 'JAPSAN_EXTERNAL_API_SECRET_2026';
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $jc_api_url);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+            'action' => 'deduct',
+            'mobile' => $user['mobile'],
+            'amount' => $amount_inr,
+            'secret' => $secret
+        ]));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $response = curl_exec($ch);
+        curl_close($ch);
+        
+        $data = json_decode($response, true);
+        if (!$data || empty($data['success'])) {
+            echo json_encode(['success' => false, 'message' => $data['message'] ?? 'Failed to deduct from Japsan Coin Ecosystem']);
+            exit;
         }
+        
+        // Also update local wallet for fallback
         $db->prepare("UPDATE users SET japsan_wallet = japsan_wallet - ? WHERE id = ?")->execute([$amount_inr, $user['id']]);
     } elseif ($payment_method === 'gold_wallet') {
         $gRate = $db->query("SELECT rate_per_gram FROM gold_rates ORDER BY rate_date DESC LIMIT 1")->fetch();
@@ -81,6 +100,58 @@ try {
     $db->rollBack();
     echo json_encode(['success' => false, 'message' => 'Transaction failed: ' . $e->getMessage()]);
     exit();
+}
+
+// Check for referral bonus (if they reach 1000 INR total purchase)
+try {
+    $uStmt = $db->prepare("SELECT referred_by, referral_bonus_paid FROM users WHERE id = ?");
+    $uStmt->execute([$user['id']]);
+    $userData = $uStmt->fetch();
+
+    if ($userData && !empty($userData['referred_by']) && $userData['referral_bonus_paid'] == 0) {
+        $sumStmt = $db->prepare("SELECT SUM(amount_inr) as total_purchase FROM transactions WHERE user_id = ? AND type = 'buy' AND status = 'completed'");
+        $sumStmt->execute([$user['id']]);
+        $sumData = $sumStmt->fetch();
+        
+        if ($sumData && $sumData['total_purchase'] >= 1000) {
+            $db->beginTransaction();
+            $db->prepare("UPDATE users SET japsan_wallet = japsan_wallet + 500 WHERE id = ?")->execute([$userData['referred_by']]);
+            $db->prepare("UPDATE users SET referral_bonus_paid = 1 WHERE id = ?")->execute([$user['id']]);
+            $db->prepare("INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Referral Bonus', 'You received 500 JC coins for a successful referral purchase', 'general')")->execute([$userData['referred_by']]);
+            
+            // Get referrer mobile for external sync
+            $refStmt = $db->prepare("SELECT mobile FROM users WHERE id = ?");
+            $refStmt->execute([$userData['referred_by']]);
+            $referrer_mobile = $refStmt->fetchColumn();
+
+            $db->commit();
+            
+            // Sync with external Japsan Ecosystem
+            if ($referrer_mobile) {
+                $jc_api_url = 'https://odofast.in/api/external/wallet_api.php'; 
+                $secret = 'JAPSAN_EXTERNAL_API_SECRET_2026';
+                
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $jc_api_url);
+                curl_setopt($ch, CURLOPT_POST, 1);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+                    'action' => 'add',
+                    'mobile' => $referrer_mobile,
+                    'amount' => 500,
+                    'description' => 'Referral Bonus from Gold/Silver Purchase',
+                    'secret' => $secret
+                ]));
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_exec($ch);
+                curl_close($ch);
+            }
+        }
+    }
+} catch (Exception $e) {
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
 }
 
 // Notification

@@ -6,6 +6,27 @@ require_once __DIR__ . '/../../middleware/auth.php';
 $user = authenticate();
 $db = (new Database())->getConnection();
 
+// Sync Japsan Coin Wallet from external ecosystem
+try {
+    $jc_api_url = 'https://odofast.in/api/external/wallet_api.php'; 
+    $secret = 'JAPSAN_EXTERNAL_API_SECRET_2026';
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $jc_api_url . '?action=get_balance&mobile=' . urlencode($user['mobile']) . '&secret=' . $secret);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $response = curl_exec($ch);
+    curl_close($ch);
+    
+    if ($response) {
+        $data = json_decode($response, true);
+        if (isset($data['success']) && $data['success'] && isset($data['balance'])) {
+            $db->prepare("UPDATE users SET japsan_wallet = ? WHERE id = ?")->execute([$data['balance'], $user['id']]);
+        }
+    }
+} catch (Exception $e) {}
+
 $summary = $db->prepare("
     SELECT u.inr_wallet, u.silver_wallet, u.japsan_wallet, u.sip_active, u.sip_amount, u.sip_frequency, 
            us.total_gold_grams, us.total_silver_grams, us.total_invested_inr 
