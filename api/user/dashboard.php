@@ -53,6 +53,8 @@ $txns->execute([$user['id']]);
 $notifs = $db->prepare("SELECT id, title, message, type, is_read, created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT 10");
 $notifs->execute([$user['id']]);
 
+$banners = $db->query("SELECT id, image_url FROM banners WHERE is_active = 1 ORDER BY created_at DESC")->fetchAll();
+
 echo json_encode(['success' => true, 'data' => [
     'inr_wallet'        => (float)($userData['inr_wallet'] ?? 0),
     'silver_wallet'     => (float)($userData['silver_wallet'] ?? 0),
@@ -64,9 +66,12 @@ echo json_encode(['success' => true, 'data' => [
     'total_silver_grams'=> $total_silver,
     'total_invested_inr'=> $total_invested,
     'current_value_inr' => $current_value,
+    'gold_current_value' => $gold_current_value,
+    'silver_current_value' => $silver_current_value,
     'profit_loss_inr'   => $profit_loss,
     'gold_rate'         => (float)($rate['rate_per_gram'] ?? 0),
     'silver_rate'       => (float)($silver_rate['rate_per_gram'] ?? 0),
     'recent_transactions' => $txns->fetchAll(),
-    'notifications'     => $notifs->fetchAll()
+    'notifications'     => $notifs->fetchAll(),
+    'banners'           => $banners
 ]]);

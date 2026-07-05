@@ -31,7 +31,7 @@ if ($method === 'GET') {
 } elseif ($method === 'PUT') {
     $id   = (int)($_GET['id'] ?? 0);
     $data = json_decode(file_get_contents('php://input'), true);
-    $fields = ['name','email','address','city','state','pincode','aadhar_number','pan_number','is_active','dob'];
+    $fields = ['name','email','address','city','state','pincode','aadhar_number','pan_number','is_active','dob','bank_name','account_number','ifsc_code','account_holder_name'];
     $updates = []; $values = [];
     foreach ($fields as $f) { if (isset($data[$f])) { $updates[] = "$f=?"; $values[] = $data[$f]; } }
     $values[] = $id;

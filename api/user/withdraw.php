@@ -45,7 +45,7 @@ try {
     ]);
 
     // Add transaction history
-    $stmt = $db->prepare("INSERT INTO transactions (user_id, type, amount_inr, status, transaction_source, notes, description) VALUES (?, 'sell', ?, 'pending', 'wallet', 'Withdrawal Request', 'Funds withdrawal to bank account')");
+    $stmt = $db->prepare("INSERT INTO transactions (user_id, type, amount_inr, status, transaction_source, notes) VALUES (?, 'withdraw', ?, 'pending', 'wallet', 'Withdrawal Request')");
     $stmt->execute([$user['id'], $amount]);
 
     $db->commit();
