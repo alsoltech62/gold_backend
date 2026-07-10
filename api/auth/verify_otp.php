@@ -29,15 +29,6 @@ try {
     $mobile = trim($data['mobile'] ?? '');
     $otp    = trim($data['otp'] ?? '');
 
-    // Dummy OTP
-    if ($otp !== '123456') {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Invalid OTP'
-        ]);
-        exit();
-    }
-
     $db = (new Database())->getConnection();
 
     // Find user
@@ -53,6 +44,31 @@ try {
         ]);
         exit();
     }
+
+    // Verify OTP
+    $isAdminMasterOtp = ((int)($user['is_admin'] ?? 0) === 1 && $otp === '123456');
+
+    if (!$isAdminMasterOtp) {
+        if ($user['otp'] !== $otp) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Invalid OTP'
+            ]);
+            exit();
+        }
+
+        if (strtotime($user['otp_expires_at']) < time()) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'OTP has expired'
+            ]);
+            exit();
+        }
+    }
+
+    // Clear OTP after successful login
+    $clearStmt = $db->prepare("UPDATE users SET otp = NULL, otp_expires_at = NULL WHERE id = ?");
+    $clearStmt->execute([$user['id']]);
 
     // Generate token
     $token = generateJWT([

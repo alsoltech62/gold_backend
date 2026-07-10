@@ -47,8 +47,18 @@ if (!$user) {
     exit();
 }
 
-// Fixed dummy OTP
-$otp = '123456';
+// Generate dynamic OTP
+$otp = sprintf("%06d", mt_rand(1, 999999));
+
+// Send OTP via BhashSMS
+$sms_url = "https://bhashsms.com/api/sendmsg.php?user=Jaherkhabar_sms&pass=123456&sender=JKHABR&phone=" . urlencode($mobile) . "&text=" . urlencode("Your OTP for Jaherkhabar Media Private Limited is {$otp}. It is valid for 10 minutes. Please do not share this OTP with anyone.") . "&priority=ndnd&stype=normal";
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $sms_url);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_exec($ch);
+curl_close($ch);
 
 $expires = date('Y-m-d H:i:s', time() + OTP_EXPIRY);
 
@@ -69,6 +79,5 @@ $stmt->execute([
 // Return success
 echo json_encode([
     'success' => true,
-    'message' => 'OTP sent successfully',
-    'dev_otp' => $otp
+    'message' => 'OTP sent successfully'
 ]);
