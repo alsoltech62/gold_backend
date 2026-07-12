@@ -12,8 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $frequency = $data->frequency ?? 'monthly';
     $active = isset($data->active) ? (int)$data->active : 1;
 
-    if ($active && (($frequency === 'daily' && $amount < 10) || ($frequency === 'monthly' && $amount < 100))) {
-        echo json_encode(['success' => false, 'message' => 'Minimum SIP is 10 Rs/day or 100 Rs/month']);
+    if ($active && (($frequency === 'daily' && $amount < 10) || ($frequency === 'weekly' && $amount < 50) || ($frequency === 'monthly' && $amount < 100) || ($frequency === 'yearly' && $amount < 1000))) {
+        echo json_encode(['success' => false, 'message' => 'Minimum SIP requirement not met']);
         exit;
     }
 

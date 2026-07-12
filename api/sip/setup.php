@@ -20,10 +20,10 @@ if (!isset($data['amount']) || !isset($data['frequency'])) {
 }
 
 $amount = floatval($data['amount']);
-$frequency = in_array($data['frequency'], ['daily', 'weekly', 'monthly']) ? $data['frequency'] : 'monthly';
+$frequency = in_array($data['frequency'], ['daily', 'weekly', 'monthly', 'yearly']) ? $data['frequency'] : 'monthly';
 
-if ($amount < 500) {
-    echo json_encode(['success' => false, 'message' => 'Minimum SIP amount is ₹500']);
+if ($amount < 100) {
+    echo json_encode(['success' => false, 'message' => 'Minimum SIP amount is ₹100']);
     exit;
 }
 

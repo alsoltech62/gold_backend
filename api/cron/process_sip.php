@@ -57,6 +57,32 @@ try {
            ->execute([$user['id'], $amount, $gold_grams, $rate_per_gram]);
     }
 
+    // Process weekly SIP
+    $stmt = $db->prepare("SELECT id, inr_wallet, sip_amount FROM users WHERE sip_active = 1 AND sip_frequency = 'weekly' AND inr_wallet >= sip_amount AND (sip_last_deducted IS NULL OR DATE_ADD(DATE(sip_last_deducted), INTERVAL 1 WEEK) <= CURDATE())");
+    $stmt->execute();
+    $weeklyUsers = $stmt->fetchAll();
+
+    foreach ($weeklyUsers as $user) {
+        $amount = $user['sip_amount'];
+        $gold_grams = round($amount / $rate_per_gram, 4);
+        $db->prepare("UPDATE users SET inr_wallet = inr_wallet - ?, sip_last_deducted = NOW() WHERE id = ?")->execute([$amount, $user['id']]);
+        $db->prepare("INSERT INTO transactions (user_id, type, amount_inr, gold_grams, gold_rate, metal_type, status, transaction_source, notes) VALUES (?, 'buy', ?, ?, ?, 'gold', 'completed', 'sip', 'Weekly SIP Deduction')")
+           ->execute([$user['id'], $amount, $gold_grams, $rate_per_gram]);
+    }
+
+    // Process yearly SIP
+    $stmt = $db->prepare("SELECT id, inr_wallet, sip_amount FROM users WHERE sip_active = 1 AND sip_frequency = 'yearly' AND inr_wallet >= sip_amount AND (sip_last_deducted IS NULL OR DATE_ADD(DATE(sip_last_deducted), INTERVAL 1 YEAR) <= CURDATE())");
+    $stmt->execute();
+    $yearlyUsers = $stmt->fetchAll();
+
+    foreach ($yearlyUsers as $user) {
+        $amount = $user['sip_amount'];
+        $gold_grams = round($amount / $rate_per_gram, 4);
+        $db->prepare("UPDATE users SET inr_wallet = inr_wallet - ?, sip_last_deducted = NOW() WHERE id = ?")->execute([$amount, $user['id']]);
+        $db->prepare("INSERT INTO transactions (user_id, type, amount_inr, gold_grams, gold_rate, metal_type, status, transaction_source, notes) VALUES (?, 'buy', ?, ?, ?, 'gold', 'completed', 'sip', 'Yearly SIP Deduction')")
+           ->execute([$user['id'], $amount, $gold_grams, $rate_per_gram]);
+    }
+
     // Process MISSED SIPs (Insufficient Funds) - Daily
     $stmt = $db->prepare("SELECT id, inr_wallet, sip_amount FROM users WHERE sip_active = 1 AND sip_frequency = 'daily' AND inr_wallet < sip_amount AND (sip_last_deducted IS NULL OR DATE(sip_last_deducted) < CURDATE())");
     $stmt->execute();
@@ -77,6 +103,24 @@ try {
         $db->prepare("UPDATE users SET inr_wallet = inr_wallet - ?, sip_last_deducted = NOW() WHERE id = ?")->execute([$penalty_charge, $user['id']]);
         $db->prepare("INSERT INTO transactions (user_id, type, amount_inr, gold_grams, gold_rate, metal_type, status, transaction_source, notes) VALUES (?, 'sip_penalty', ?, 0, ?, 'fiat', 'completed', 'sip', 'Penalty for missed monthly SIP')")
            ->execute([$user['id'], $penalty_charge, $rate_per_gram]);
+    }
+
+    // Process MISSED SIPs (Insufficient Funds) - Weekly
+    $stmt = $db->prepare("SELECT id, inr_wallet, sip_amount FROM users WHERE sip_active = 1 AND sip_frequency = 'weekly' AND inr_wallet < sip_amount AND (sip_last_deducted IS NULL OR DATE_ADD(DATE(sip_last_deducted), INTERVAL 1 WEEK) <= CURDATE())");
+    $stmt->execute();
+    $missedWeekly = $stmt->fetchAll();
+    foreach ($missedWeekly as $user) {
+        $db->prepare("UPDATE users SET inr_wallet = inr_wallet - ?, sip_last_deducted = NOW() WHERE id = ?")->execute([$penalty_charge, $user['id']]);
+        $db->prepare("INSERT INTO transactions (user_id, type, amount_inr, gold_grams, gold_rate, metal_type, status, transaction_source, notes) VALUES (?, 'sip_penalty', ?, 0, ?, 'fiat', 'completed', 'sip', 'Penalty for missed weekly SIP')")->execute([$user['id'], $penalty_charge, $rate_per_gram]);
+    }
+
+    // Process MISSED SIPs (Insufficient Funds) - Yearly
+    $stmt = $db->prepare("SELECT id, inr_wallet, sip_amount FROM users WHERE sip_active = 1 AND sip_frequency = 'yearly' AND inr_wallet < sip_amount AND (sip_last_deducted IS NULL OR DATE_ADD(DATE(sip_last_deducted), INTERVAL 1 YEAR) <= CURDATE())");
+    $stmt->execute();
+    $missedYearly = $stmt->fetchAll();
+    foreach ($missedYearly as $user) {
+        $db->prepare("UPDATE users SET inr_wallet = inr_wallet - ?, sip_last_deducted = NOW() WHERE id = ?")->execute([$penalty_charge, $user['id']]);
+        $db->prepare("INSERT INTO transactions (user_id, type, amount_inr, gold_grams, gold_rate, metal_type, status, transaction_source, notes) VALUES (?, 'sip_penalty', ?, 0, ?, 'fiat', 'completed', 'sip', 'Penalty for missed yearly SIP')")->execute([$user['id'], $penalty_charge, $rate_per_gram]);
     }
 
     $db->commit();

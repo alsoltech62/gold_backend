@@ -1,0 +1,1 @@
+<?php $ch = curl_init("https://goldpay.odofast.in/backend/api/auth/register.php"); curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(["name"=>"Test", "mobile"=>"9999999991", "password"=>"123456"])); curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]); echo curl_exec($ch);

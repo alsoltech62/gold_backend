@@ -42,6 +42,20 @@ $silver_rate = $db->query("SELECT rate_per_gram FROM silver_rates ORDER BY rate_
 $total_gold = (float)($userData['total_gold_grams'] ?? 0);
 $total_silver = (float)($userData['total_silver_grams'] ?? 0);
 $total_invested = (float)($userData['total_invested_inr'] ?? 0);
+
+$locked_gold = 0;
+$locked_silver = 0;
+$lock_error = null;
+try {
+    $lockQuery = $db->prepare("SELECT metal_type, SUM(CASE WHEN metal_type='gold' THEN gold_grams ELSE silver_grams END) as total_locked FROM user_lock_ins WHERE user_id = ? AND status = 'active' GROUP BY metal_type");
+    $lockQuery->execute([$user['id']]);
+    $lockData = $lockQuery->fetchAll(PDO::FETCH_KEY_PAIR);
+    $locked_gold = (float)($lockData['gold'] ?? 0);
+    $locked_silver = (float)($lockData['silver'] ?? 0);
+} catch (Exception $e) {
+    $lock_error = $e->getMessage();
+}
+
 $gold_current_value = round($total_gold * ($rate['rate_per_gram'] ?? 0), 2);
 $silver_current_value = round($total_silver * ($silver_rate['rate_per_gram'] ?? 0), 2);
 $current_value = $gold_current_value + $silver_current_value;
@@ -64,6 +78,9 @@ echo json_encode(['success' => true, 'data' => [
     'sip_frequency'     => $userData['sip_frequency'] ?? 'monthly',
     'total_gold_grams'  => $total_gold,
     'total_silver_grams'=> $total_silver,
+    'locked_gold'       => $locked_gold,
+    'locked_silver'     => $locked_silver,
+    'lock_error'        => $lock_error,
     'total_invested_inr'=> $total_invested,
     'current_value_inr' => $current_value,
     'gold_current_value' => $gold_current_value,
