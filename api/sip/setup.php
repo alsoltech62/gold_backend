@@ -30,9 +30,31 @@ if ($amount < 100) {
 $db = new Database();
 $conn = $db->getConnection();
 
-$stmt = $conn->prepare("UPDATE users SET sip_active = 1, sip_amount = ?, sip_frequency = ? WHERE id = ?");
+$conn->exec("CREATE TABLE IF NOT EXISTS user_sips (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    frequency ENUM('daily', 'weekly', 'monthly', 'yearly') NOT NULL,
+    metal_type ENUM('gold', 'silver') DEFAULT 'gold',
+    status ENUM('active', 'paused', 'cancelled') DEFAULT 'active',
+    last_deducted DATETIME,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+)");
 
-if ($stmt->execute([$amount, $frequency, $user['id']])) {
+$stmt = $conn->prepare("SELECT id FROM user_sips WHERE user_id = ? AND frequency = ? AND status = 'active'");
+$stmt->execute([$user['id'], $frequency]);
+$existing = $stmt->fetch();
+
+if ($existing) {
+    $updateStmt = $conn->prepare("UPDATE user_sips SET amount = ? WHERE id = ?");
+    $result = $updateStmt->execute([$amount, $existing['id']]);
+} else {
+    $insertStmt = $conn->prepare("INSERT INTO user_sips (user_id, amount, frequency, status) VALUES (?, ?, ?, 'active')");
+    $result = $insertStmt->execute([$user['id'], $amount, $frequency]);
+}
+
+if ($result) {
     echo json_encode(['success' => true, 'message' => 'SIP Setup successfully']);
 } else {
     echo json_encode(['success' => false, 'message' => 'Failed to setup SIP']);

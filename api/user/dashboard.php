@@ -49,15 +49,48 @@ $lock_error = null;
 try {
     $lockQuery = $db->prepare("SELECT metal_type, SUM(CASE WHEN metal_type='gold' THEN gold_grams ELSE silver_grams END) as total_locked FROM user_lock_ins WHERE user_id = ? AND status = 'active' GROUP BY metal_type");
     $lockQuery->execute([$user['id']]);
-    $lockData = $lockQuery->fetchAll(PDO::FETCH_KEY_PAIR);
-    $locked_gold = (float)($lockData['gold'] ?? 0);
-    $locked_silver = (float)($lockData['silver'] ?? 0);
+    $lockData = $lockQuery->fetchAll(PDO::FETCH_ASSOC);
+    
+    $locked_gold = 0;
+    $locked_silver = 0;
+    foreach ($lockData as $row) {
+        if ($row['metal_type'] === 'gold') {
+            $locked_gold = (float)$row['total_locked'];
+        } elseif ($row['metal_type'] === 'silver') {
+            $locked_silver = (float)$row['total_locked'];
+        }
+    }
 } catch (Exception $e) {
     $lock_error = $e->getMessage();
 }
 
 $gold_current_value = round($total_gold * ($rate['rate_per_gram'] ?? 0), 2);
 $silver_current_value = round($total_silver * ($silver_rate['rate_per_gram'] ?? 0), 2);
+
+// SIP Data
+$db->exec("CREATE TABLE IF NOT EXISTS user_sips (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    frequency ENUM('daily', 'weekly', 'monthly', 'yearly') NOT NULL,
+    metal_type ENUM('gold', 'silver') DEFAULT 'gold',
+    status ENUM('active', 'paused', 'cancelled') DEFAULT 'active',
+    last_deducted DATETIME,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+)");
+
+$sipQuery = $db->prepare("SELECT frequency, SUM(amount) as total_amount FROM user_sips WHERE user_id = ? AND status = 'active' GROUP BY frequency");
+$sipQuery->execute([$user['id']]);
+$sips = $sipQuery->fetchAll(PDO::FETCH_ASSOC);
+
+$sip_breakdown = [];
+$total_sip_amount = 0;
+foreach ($sips as $s) {
+    $sip_breakdown[$s['frequency']] = (float)$s['total_amount'];
+    $total_sip_amount += (float)$s['total_amount'];
+}
+$sip_active = $total_sip_amount > 0;
 $current_value = $gold_current_value + $silver_current_value;
 $profit_loss = round($current_value - $total_invested, 2);
 
@@ -73,9 +106,9 @@ echo json_encode(['success' => true, 'data' => [
     'inr_wallet'        => (float)($userData['inr_wallet'] ?? 0),
     'silver_wallet'     => (float)($userData['silver_wallet'] ?? 0),
     'japsan_wallet'     => (float)($userData['japsan_wallet'] ?? 0),
-    'sip_active'        => (bool)($userData['sip_active'] ?? false),
-    'sip_amount'        => (float)($userData['sip_amount'] ?? 0),
-    'sip_frequency'     => $userData['sip_frequency'] ?? 'monthly',
+    'sip_active'        => $sip_active,
+    'sip_amount'        => $total_sip_amount,
+    'sip_breakdown'     => $sip_breakdown,
     'total_gold_grams'  => $total_gold,
     'total_silver_grams'=> $total_silver,
     'locked_gold'       => $locked_gold,

@@ -1,6 +1,6 @@
 <?php
 require 'config/database.php';
-$db = (new Database())->getConnection();
-$stmt = $db->query('SELECT * FROM sip_plans');
-print_r($stmt->fetchAll(PDO::FETCH_ASSOC));
-?>
+$db = new Database();
+$conn = $db->getConnection();
+$stmt = $conn->query('SHOW TABLES');
+print_r($stmt->fetchAll(PDO::FETCH_COLUMN));
