@@ -90,7 +90,16 @@ foreach ($sips as $s) {
     $sip_breakdown[$s['frequency']] = (float)$s['total_amount'];
     $total_sip_amount += (float)$s['total_amount'];
 }
-$sip_active = $total_sip_amount > 0;
+// Fallback to `users` table if `user_sips` is empty
+// Check: sip_active=1 OR sip_amount > 0 in users table
+$users_sip_amount = (float)($userData['sip_amount'] ?? 0);
+$users_sip_active = (int)($userData['sip_active'] ?? 0);
+if ($total_sip_amount == 0 && ($users_sip_active == 1 || $users_sip_amount > 0)) {
+    $freq = !empty($userData['sip_frequency']) ? $userData['sip_frequency'] : 'monthly';
+    $sip_breakdown[$freq] = $users_sip_amount;
+    $total_sip_amount = $users_sip_amount;
+}
+$sip_active = (bool)($total_sip_amount > 0);
 $current_value = $gold_current_value + $silver_current_value;
 $profit_loss = round($current_value - $total_invested, 2);
 

@@ -16,11 +16,15 @@ try {
     $gRateStmt = $db->query("SELECT rate_per_gram FROM gold_rates ORDER BY rate_date DESC LIMIT 1");
     $gRate = $gRateStmt->fetch();
 
-    if (!$gRate) {
-        throw new Exception("Gold rate not available");
+    $sRateStmt = $db->query("SELECT rate_per_gram FROM silver_rates ORDER BY rate_date DESC LIMIT 1");
+    $sRate = $sRateStmt->fetch();
+
+    if (!$gRate || !$sRate) {
+        throw new Exception("Rates not available");
     }
 
-    $rate_per_gram = $gRate['rate_per_gram'];
+    $gold_rate = $gRate['rate_per_gram'];
+    $silver_rate = $sRate['rate_per_gram'];
 
     // Fetch Penalty Charge Setting
     $penaltyStmt = $db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'sip_penalty_charge'");
@@ -38,26 +42,29 @@ try {
     $penalties_count = 0;
 
     foreach ($frequencies as $freq => $condition) {
-        $stmt = $db->prepare("SELECT us.id as sip_id, us.amount, u.id as user_id, u.inr_wallet FROM user_sips us JOIN users u ON us.user_id = u.id WHERE us.status = 'active' AND us.frequency = ? AND (us.last_deducted IS NULL OR $condition)");
+        $stmt = $db->prepare("SELECT us.id as sip_id, us.amount, us.metal_type, u.id as user_id, u.inr_wallet FROM user_sips us JOIN users u ON us.user_id = u.id WHERE us.status = 'active' AND us.frequency = ? AND (us.last_deducted IS NULL OR $condition)");
         $stmt->execute([$freq]);
         $sips = $stmt->fetchAll();
 
         foreach ($sips as $sip) {
             $amount = $sip['amount'];
+            $metal_type = $sip['metal_type'] ?? 'gold';
+            $rate_per_gram = $metal_type === 'silver' ? $silver_rate : $gold_rate;
+
             if ($sip['inr_wallet'] >= $amount) {
                 // Successful SIP
-                $gold_grams = round($amount / $rate_per_gram, 4);
+                $grams = round($amount / $rate_per_gram, 4);
                 $db->prepare("UPDATE users SET inr_wallet = inr_wallet - ? WHERE id = ?")->execute([$amount, $sip['user_id']]);
                 $db->prepare("UPDATE user_sips SET last_deducted = NOW() WHERE id = ?")->execute([$sip['sip_id']]);
-                $db->prepare("INSERT INTO transactions (user_id, type, amount_inr, gold_grams, gold_rate, metal_type, status, transaction_source, notes) VALUES (?, 'buy', ?, ?, ?, 'gold', 'completed', 'sip', ?)")
-                   ->execute([$sip['user_id'], $amount, $gold_grams, $rate_per_gram, ucfirst($freq) . ' SIP Deduction']);
+                $db->prepare("INSERT INTO transactions (user_id, type, amount_inr, gold_grams, gold_rate, metal_type, status, transaction_source, notes) VALUES (?, 'buy', ?, ?, ?, ?, 'completed', 'sip', ?)")
+                   ->execute([$sip['user_id'], $amount, $grams, $rate_per_gram, $metal_type, ucfirst($freq) . ' ' . ucfirst($metal_type) . ' SIP Deduction']);
                 $processed_count++;
             } else {
                 // Missed SIP (Penalty)
                 $db->prepare("UPDATE users SET inr_wallet = inr_wallet - ? WHERE id = ?")->execute([$penalty_charge, $sip['user_id']]);
                 $db->prepare("UPDATE user_sips SET last_deducted = NOW() WHERE id = ?")->execute([$sip['sip_id']]);
                 $db->prepare("INSERT INTO transactions (user_id, type, amount_inr, gold_grams, gold_rate, metal_type, status, transaction_source, notes) VALUES (?, 'sip_penalty', ?, 0, ?, 'fiat', 'completed', 'sip', ?)")
-                   ->execute([$sip['user_id'], $penalty_charge, $rate_per_gram, 'Penalty for missed ' . $freq . ' SIP']);
+                   ->execute([$sip['user_id'], $penalty_charge, $rate_per_gram, 'Penalty for missed ' . $freq . ' ' . ucfirst($metal_type) . ' SIP']);
                 $penalties_count++;
             }
         }
