@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../middleware/auth.php';
+require_once __DIR__ . '/../helpers/rates.php';
 
 $user = authenticate();
 $db = (new Database())->getConnection();
@@ -36,8 +37,8 @@ $summary = $db->prepare("
 $summary->execute([$user['id']]);
 $userData = $summary->fetch();
 
-$rate = $db->query("SELECT rate_per_gram FROM gold_rates ORDER BY rate_date DESC LIMIT 1")->fetch();
-$silver_rate = $db->query("SELECT rate_per_gram FROM silver_rates ORDER BY rate_date DESC LIMIT 1")->fetch();
+$rate_val = get_live_rate_with_markup($db, 'gold');
+$silver_rate_val = get_live_rate_with_markup($db, 'silver');
 
 $total_gold = (float)($userData['total_gold_grams'] ?? 0);
 $total_silver = (float)($userData['total_silver_grams'] ?? 0);
@@ -64,8 +65,8 @@ try {
     $lock_error = $e->getMessage();
 }
 
-$gold_current_value = round($total_gold * ($rate['rate_per_gram'] ?? 0), 2);
-$silver_current_value = round($total_silver * ($silver_rate['rate_per_gram'] ?? 0), 2);
+$gold_current_value = round($total_gold * $rate_val, 2);
+$silver_current_value = round($total_silver * $silver_rate_val, 2);
 
 // SIP Data
 $db->exec("CREATE TABLE IF NOT EXISTS user_sips (
@@ -128,8 +129,8 @@ echo json_encode(['success' => true, 'data' => [
     'gold_current_value' => $gold_current_value,
     'silver_current_value' => $silver_current_value,
     'profit_loss_inr'   => $profit_loss,
-    'gold_rate'         => (float)($rate['rate_per_gram'] ?? 0),
-    'silver_rate'       => (float)($silver_rate['rate_per_gram'] ?? 0),
+    'gold_rate'         => (float)$rate_val,
+    'silver_rate'       => (float)$silver_rate_val,
     'recent_transactions' => $txns->fetchAll(),
     'notifications'     => $notifs->fetchAll(),
     'banners'           => $banners
