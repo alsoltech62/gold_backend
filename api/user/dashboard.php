@@ -65,8 +65,8 @@ try {
     $lock_error = $e->getMessage();
 }
 
-$gold_current_value = round($total_gold * $rate_val, 2);
-$silver_current_value = round($total_silver * $silver_rate_val, 2);
+$gold_current_value = round(($total_gold + $locked_gold) * $rate_val, 2);
+$silver_current_value = round(($total_silver + $locked_silver) * $silver_rate_val, 2);
 
 // SIP Data
 $db->exec("CREATE TABLE IF NOT EXISTS user_sips (
@@ -104,7 +104,7 @@ $sip_active = (bool)($total_sip_amount > 0);
 $current_value = $gold_current_value + $silver_current_value;
 $profit_loss = round($current_value - $total_invested, 2);
 
-$txns = $db->prepare("SELECT id, type, amount_inr, gold_grams, gold_rate, status, created_at FROM transactions WHERE user_id=? ORDER BY created_at DESC LIMIT 5");
+$txns = $db->prepare("SELECT id, type, amount_inr, gold_grams, gold_rate, metal_type, status, created_at FROM transactions WHERE user_id=? ORDER BY created_at DESC LIMIT 5");
 $txns->execute([$user['id']]);
 
 $notifs = $db->prepare("SELECT id, title, message, type, is_read, created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT 10");
